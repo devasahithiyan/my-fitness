@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hevy Analytics Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+        
+        /* Glass Effect Utility */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-black text-zinc-100 h-screen flex overflow-hidden selection:bg-lime-400 selection:text-black">
+
+    <!-- Mobile Overlay -->
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/80 z-40 hidden md:hidden transition-all duration-300"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 bg-black border-r border-zinc-800 flex-shrink-0 flex flex-col transition-transform duration-300 transform -translate-x-full md:relative md:translate-x-0">
+        <div class="h-20 flex items-center px-8 border-b border-zinc-800 justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-lime-400 flex items-center justify-center">
+                    <i class="fa-solid fa-bolt text-black text-xl"></i>
+                </div>
+                <div>
+                    <span class="text-white text-xl font-black tracking-tighter block leading-none italic">HEVY</span>
+                    <span class="text-zinc-500 text-xs font-bold tracking-widest uppercase">Performance</span>
+                </div>
+            </div>
+            <button onclick="toggleSidebar()" class="md:hidden text-zinc-400 hover:text-white transition-colors">
+                <i class="fa-solid fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto py-6 px-4 space-y-1 custom-scrollbar">
+            <p class="px-4 text-xs font-bold text-zinc-600 uppercase tracking-wider mb-4">Menu</p>
+            <nav class="space-y-2">
+                <a onclick="switchTab('overview')" id="nav-overview" class="group flex items-center px-4 py-3 text-zinc-400 hover:bg-zinc-900 hover:text-white rounded-lg transition-all duration-200 cursor-pointer bg-zinc-900 text-white border-l-2 border-lime-400">
+                    <i class="fa-solid fa-chart-simple w-6"></i>
+                    <span class="font-semibold">Overview</span>
+                </a>
+                <a onclick="switchTab('analytics')" id="nav-analytics" class="group flex items-center px-4 py-3 text-zinc-400 hover:bg-zinc-900 hover:text-white rounded-lg transition-all duration-200 cursor-pointer">
+                    <i class="fa-solid fa-chart-pie w-6"></i>
+                    <span class="font-semibold">Analytics</span>
+                </a>
+                
+                <p class="px-4 text-xs font-bold text-zinc-600 uppercase tracking-wider mt-8 mb-4">Library</p>
+                <a onclick="switchTab('muscles')" id="nav-muscles" class="group flex items-center px-4 py-3 text-zinc-400 hover:bg-zinc-900 hover:text-white rounded-lg transition-all duration-200 cursor-pointer">
+                    <i class="fa-solid fa-dumbbell w-6"></i>
+                    <span class="font-semibold">Muscles</span>
+                </a>
+                <a onclick="switchTab('exercises')" id="nav-exercises" class="group flex items-center px-4 py-3 text-zinc-400 hover:bg-zinc-900 hover:text-white rounded-lg transition-all duration-200 cursor-pointer">
+                    <i class="fa-solid fa-list w-6"></i>
+                    <span class="font-semibold">Exercises</span>
+                </a>
+                
+                <p class="px-4 text-xs font-bold text-zinc-600 uppercase tracking-wider mt-8 mb-4">You</p>
+                <a onclick="switchTab('records')" id="nav-records" class="group flex items-center px-4 py-3 text-zinc-400 hover:bg-zinc-900 hover:text-white rounded-lg transition-all duration-200 cursor-pointer">
+                    <i class="fa-solid fa-trophy w-6"></i>
+                    <span class="font-semibold">Records</span>
+                </a>
+                <a onclick="switchTab('history')" id="nav-history" class="group flex items-center px-4 py-3 text-zinc-400 hover:bg-zinc-900 hover:text-white rounded-lg transition-all duration-200 cursor-pointer">
+                    <i class="fa-solid fa-clock-rotate-left w-6"></i>
+                    <span class="font-semibold">History</span>
+                </a>
+                <a onclick="switchTab('diet')" id="nav-diet" class="group flex items-center px-4 py-3 text-zinc-400 hover:bg-zinc-900 hover:text-white rounded-lg transition-all duration-200 cursor-pointer">
+                    <i class="fa-solid fa-utensils w-6"></i>
+                    <span class="font-semibold">Nutrition</span>
+                </a>
+            </nav>
+        </div>
+
+        <div class="p-4 border-t border-zinc-800 bg-black">
+            <div class="bg-zinc-900 rounded-lg p-4 border border-zinc-800">
+                <input type="file" id="csvInput" accept=".csv" class="hidden">
+                <label for="csvInput" class="flex items-center justify-center w-full px-4 py-3 bg-white hover:bg-zinc-200 text-black text-sm font-bold rounded cursor-pointer transition-all">
+                    <i class="fa-solid fa-upload mr-2"></i> Import Data
+                </label>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col overflow-hidden relative bg-black">
+        
+        <!-- Header -->
+        <header class="h-20 bg-black border-b border-zinc-800 flex items-center justify-between px-6 md:px-10 z-10">
+            <div class="flex items-center">
+                <button onclick="toggleSidebar()" class="md:hidden mr-4 text-zinc-400 hover:text-white focus:outline-none transition-colors">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <div>
+                    <h2 class="text-2xl font-black text-white tracking-tight uppercase italic" id="pageTitle">Overview</h2>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex items-center px-3 py-1.5 bg-zinc-900 rounded border border-zinc-800">
+                    <div class="w-2 h-2 rounded-full bg-lime-500 mr-2"></div>
+                    <span class="text-xs text-zinc-400 font-mono" id="lastUpdate">SYNCED</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Scrollable Content -->
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar" id="mainContainer">
+            
+            <!-- Loading / Empty States -->
+            <div id="loadingState" class="hidden flex flex-col items-center justify-center h-full">
+                <div class="w-12 h-12 border-4 border-zinc-800 border-t-lime-400 rounded-full animate-spin"></div>
+                <p class="mt-6 text-zinc-500 font-mono text-sm uppercase tracking-widest">Processing Data...</p>
+            </div>
+
+            <div id="emptyState" class="flex flex-col items-center justify-center h-full text-center p-6">
+                <div class="bg-zinc-900 p-12 rounded-3xl border border-zinc-800 max-w-2xl w-full">
+                    <div class="w-20 h-20 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-8">
+                        <i class="fa-solid fa-chart-simple text-lime-400 text-3xl"></i>
+                    </div>
+                    
+                    <h3 class="text-3xl font-black text-white mb-4 uppercase italic tracking-tight">Unlock Your Potential</h3>
+                    <p class="text-zinc-400 mb-10 text-lg">Upload your Hevy export to visualize your progress with high-performance analytics.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10 text-left">
+                        <div class="p-5 bg-black rounded-xl border border-zinc-800">
+                            <i class="fa-solid fa-trophy text-white mb-3 text-xl"></i>
+                            <h4 class="font-bold text-white">PR Tracking</h4>
+                            <p class="text-xs text-zinc-500 mt-1">Auto-detects best lifts.</p>
+                        </div>
+                        <div class="p-5 bg-black rounded-xl border border-zinc-800">
+                            <i class="fa-solid fa-chart-pie text-white mb-3 text-xl"></i>
+                            <h4 class="font-bold text-white">Muscle Split</h4>
+                            <p class="text-xs text-zinc-500 mt-1">Volume distribution.</p>
+                        </div>
+                        <div class="p-5 bg-black rounded-xl border border-zinc-800">
+                            <i class="fa-solid fa-fire text-white mb-3 text-xl"></i>
+                            <h4 class="font-bold text-white">Intensity</h4>
+                            <p class="text-xs text-zinc-500 mt-1">RPE & Density analysis.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <button onclick="document.getElementById('csvInput').click()" class="px-8 py-4 bg-lime-400 text-black rounded-lg hover:bg-lime-300 font-bold transition-all uppercase tracking-wide">
+                            <i class="fa-solid fa-upload mr-2"></i> Upload CSV
+                        </button>
+                        <button onclick="loadDemoData()" class="px-8 py-4 bg-zinc-800 text-white border border-zinc-700 rounded-lg hover:bg-zinc-700 font-bold transition-all uppercase tracking-wide">
+                            <i class="fa-solid fa-eye mr-2"></i> View Demo
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Views -->
+            <div id="contentArea" class="hidden space-y-8 animate-fade-in">
+                
+                <!-- VIEW: OVERVIEW -->
+                <div id="view-overview" class="space-y-6">
+                    <!-- Top Stats -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div class="bg-zinc-900 rounded-xl p-6 border border-zinc-800">
+                            <p class="text-xs font-bold text-zinc-500 uppercase tracking-wider">Total Workouts</p>
+                            <p class="text-4xl font-black text-white mt-2 italic" id="kpi-workouts">-</p>
+                        </div>
+                        <div class="bg-zinc-900 rounded-xl p-6 border border-zinc-800">
+                            <p class="text-xs font-bold text-zinc-500 uppercase tracking-wider">Total Volume</p>
+                            <p class="text-4xl font-black text-white mt-2 italic" id="kpi-volume">-</p>
+                        </div>
+                        <div class="bg-zinc-900 rounded-xl p-6 border border-zinc-800">
+                            <p class="text-xs font-bold text-zinc-500 uppercase tracking-wider">Total Sets</p>
+                            <p class="text-4xl font-black text-white mt-2 italic" id="kpi-sets">-</p>
+                        </div>
+                        <div class="bg-zinc-900 rounded-xl p-6 border border-zinc-800">
+                            <p class="text-xs font-bold text-zinc-500 uppercase tracking-wider">Active Days</p>
+                            <p class="text-4xl font-black text-white mt-2 italic" id="kpi-days">-</p>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row 1 -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6 lg:col-span-2">
+                            <h3 class="font-bold text-white mb-6 flex items-center uppercase tracking-wider text-sm">Volume Progression</h3>
+                            <div class="h-72">
+                                <canvas id="volumeChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 flex items-center uppercase tracking-wider text-sm">Consistency</h3>
+                            <div class="h-72">
+                                <canvas id="consistencyChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row 2 -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 uppercase tracking-wider text-sm">Muscle Split</h3>
+                            <div class="h-72">
+                                <canvas id="muscleSplitChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 uppercase tracking-wider text-sm">Intensity (RPE)</h3>
+                            <div class="h-72">
+                                <canvas id="intensityChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Heatmap -->
+                    <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                        <h3 class="font-bold text-white mb-6 uppercase tracking-wider text-sm">Activity Heatmap</h3>
+                        <div class="overflow-x-auto pb-2 custom-scrollbar">
+                            <div id="heatmapContainer" class="min-w-[800px]"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: ANALYTICS -->
+                <div id="view-analytics" class="hidden space-y-6">
+                    <!-- Comparison Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Monthly Comparison -->
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 flex items-center uppercase tracking-wider text-sm">
+                                Monthly Comparison
+                                <span class="ml-auto text-xs font-bold text-zinc-500 bg-black px-2 py-1 rounded" id="analytics-month-label">This Month vs Last</span>
+                            </h3>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="text-center p-4 bg-black rounded-lg border border-zinc-800">
+                                    <div class="text-xs text-zinc-500 mb-1 uppercase tracking-wider">Workouts</div>
+                                    <div class="font-black text-white text-xl italic" id="comp-month-workouts">-</div>
+                                    <div class="text-xs mt-1 font-bold" id="diff-month-workouts">-</div>
+                                </div>
+                                <div class="text-center p-4 bg-black rounded-lg border border-zinc-800">
+                                    <div class="text-xs text-zinc-500 mb-1 uppercase tracking-wider">Volume</div>
+                                    <div class="font-black text-white text-xl italic" id="comp-month-volume">-</div>
+                                    <div class="text-xs mt-1 font-bold" id="diff-month-volume">-</div>
+                                </div>
+                                <div class="text-center p-4 bg-black rounded-lg border border-zinc-800">
+                                    <div class="text-xs text-zinc-500 mb-1 uppercase tracking-wider">Sets</div>
+                                    <div class="font-black text-white text-xl italic" id="comp-month-sets">-</div>
+                                    <div class="text-xs mt-1 font-bold" id="diff-month-sets">-</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Weekly Comparison -->
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 flex items-center uppercase tracking-wider text-sm">
+                                Weekly Comparison
+                                <span class="ml-auto text-xs font-bold text-zinc-500 bg-black px-2 py-1 rounded" id="analytics-week-label">This Week vs Last</span>
+                            </h3>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="text-center p-4 bg-black rounded-lg border border-zinc-800">
+                                    <div class="text-xs text-zinc-500 mb-1 uppercase tracking-wider">Workouts</div>
+                                    <div class="font-black text-white text-xl italic" id="comp-week-workouts">-</div>
+                                    <div class="text-xs mt-1 font-bold" id="diff-week-workouts">-</div>
+                                </div>
+                                <div class="text-center p-4 bg-black rounded-lg border border-zinc-800">
+                                    <div class="text-xs text-zinc-500 mb-1 uppercase tracking-wider">Volume</div>
+                                    <div class="font-black text-white text-xl italic" id="comp-week-volume">-</div>
+                                    <div class="text-xs mt-1 font-bold" id="diff-week-volume">-</div>
+                                </div>
+                                <div class="text-center p-4 bg-black rounded-lg border border-zinc-800">
+                                    <div class="text-xs text-zinc-500 mb-1 uppercase tracking-wider">Sets</div>
+                                    <div class="font-black text-white text-xl italic" id="comp-week-sets">-</div>
+                                    <div class="text-xs mt-1 font-bold" id="diff-week-sets">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Session Trends -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 uppercase tracking-wider text-sm">Avg Volume per Session</h3>
+                            <div class="h-64">
+                                <canvas id="sessionVolumeChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 uppercase tracking-wider text-sm">Avg Duration per Session</h3>
+                            <div class="h-64">
+                                <canvas id="sessionDurationChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Day of Week Analysis -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 uppercase tracking-wider text-sm">Preferred Training Days</h3>
+                            <div class="h-64">
+                                <canvas id="dayOfWeekChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 uppercase tracking-wider text-sm">Avg Volume per Day</h3>
+                            <div class="h-64">
+                                <canvas id="dayOfWeekVolumeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Volume Analysis -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 uppercase tracking-wider text-sm">Avg Volume per Muscle Group</h3>
+                            <div class="h-64">
+                                <canvas id="avgMuscleVolumeChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 uppercase tracking-wider text-sm">Avg Volume per Month</h3>
+                            <div class="h-64">
+                                <canvas id="avgMonthlyVolumeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Volume Progress -->
+                    <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6 mt-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="font-bold text-white uppercase tracking-wider text-sm">Avg Volume per Week</h3>
+                            <div class="text-right bg-black px-4 py-2 rounded border border-zinc-800">
+                                <p class="text-xs text-zinc-500 uppercase tracking-wider">Avg Session Vol</p>
+                                <p class="text-xl font-black text-lime-400 italic" id="avgWeeklyVolumeDisplay">-</p>
+                            </div>
+                        </div>
+                        <div class="h-64">
+                            <canvas id="weeklyVolumeProgressChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Performance Metrics -->
+                    <div class="flex items-center gap-4 mt-10 mb-6">
+                        <div class="h-px bg-zinc-800 flex-1"></div>
+                        <h3 class="text-lg font-black text-white uppercase tracking-widest italic">Advanced Metrics</h3>
+                        <div class="h-px bg-zinc-800 flex-1"></div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Big 3 Strength Progression -->
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 uppercase tracking-wider text-sm">"Big 3" Strength Progression</h3>
+                            <div class="h-72">
+                                <canvas id="strengthProgressionChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Training Signature Radar -->
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 uppercase tracking-wider text-sm">Monthly Training Signature</h3>
+                            <div class="h-72 flex items-center justify-center">
+                                <canvas id="trainingSignatureChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Training Style & Efficiency Section -->
+                    <div class="flex items-center gap-4 mt-10 mb-6">
+                        <div class="h-px bg-zinc-800 flex-1"></div>
+                        <h3 class="text-lg font-black text-white uppercase tracking-widest italic">Training Style</h3>
+                        <div class="h-px bg-zinc-800 flex-1"></div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Rep Ranges -->
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 text-center uppercase tracking-wider text-sm">Rep Range Analysis</h3>
+                            <div class="h-64 flex items-center justify-center">
+                                <canvas id="repRangeChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Set Types -->
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 text-center uppercase tracking-wider text-sm">Set Type Distribution</h3>
+                            <div class="h-64 flex items-center justify-center">
+                                <canvas id="setTypeChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Workout Density -->
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 text-center uppercase tracking-wider text-sm">Workout Density</h3>
+                            <div class="h-64">
+                                <canvas id="densityChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: MUSCLES -->
+                <div id="view-muscles" class="hidden space-y-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 uppercase tracking-wider text-sm">Muscle Balance</h3>
+                            <div class="h-80 flex items-center justify-center">
+                                <canvas id="muscleRadarChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 uppercase tracking-wider text-sm">Sets Distribution</h3>
+                            <div class="h-80 flex items-center justify-center">
+                                <canvas id="musclePieChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                        <h3 class="font-bold text-white mb-6 uppercase tracking-wider text-sm">Detailed Muscle Breakdown</h3>
+                        <div class="overflow-x-auto custom-scrollbar">
+                            <table class="min-w-full divide-y divide-zinc-800">
+                                <thead class="bg-black">
+                                    <tr>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Muscle Group</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Total Sets</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Total Volume</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Freq</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">%</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="muscleTableBody" class="divide-y divide-zinc-800">
+                                    <!-- JS Populated -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: EXERCISES -->
+                <div id="view-exercises" class="hidden space-y-6">
+                    <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                            <h3 class="font-bold text-white uppercase tracking-wider text-sm">Exercise Library</h3>
+                            <div class="relative">
+                                <input type="text" id="exerciseSearch" placeholder="Search..." class="pl-10 pr-4 py-2 bg-black border border-zinc-800 rounded-lg focus:ring-1 focus:ring-lime-400 focus:border-lime-400 w-64 text-white placeholder-zinc-600 transition-all">
+                                <i class="fa-solid fa-search absolute left-3 top-3 text-zinc-600"></i>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto custom-scrollbar">
+                            <table class="min-w-full divide-y divide-zinc-800">
+                                <thead class="bg-black">
+                                    <tr>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors" onclick="sortExercises('name')">Exercise</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors" onclick="sortExercises('muscle')">Muscle</th>
+                                        <th class="px-6 py-4 text-right text-xs font-bold text-zinc-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors" onclick="sortExercises('sets')">Sets</th>
+                                        <th class="px-6 py-4 text-right text-xs font-bold text-zinc-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors" onclick="sortExercises('max')">Max</th>
+                                        <th class="px-6 py-4 text-right text-xs font-bold text-zinc-500 uppercase tracking-wider cursor-pointer hover:text-white transition-colors" onclick="sortExercises('1rm')">1RM</th>
+                                        <th class="px-6 py-4 text-right text-xs font-bold text-zinc-500 uppercase tracking-wider">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="exerciseTableBody" class="divide-y divide-zinc-800">
+                                    <!-- JS Populated -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: RECORDS -->
+                <div id="view-records" class="hidden space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="recordsContainer">
+                        <!-- JS Populated -->
+                    </div>
+                </div>
+
+                <!-- VIEW: HISTORY -->
+                <div id="view-history" class="hidden space-y-6">
+                    <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                        <h3 class="font-bold text-white mb-6 uppercase tracking-wider text-sm">Workout Log</h3>
+                        <div class="overflow-x-auto custom-scrollbar">
+                            <table class="min-w-full divide-y divide-zinc-800">
+                                <thead class="bg-black">
+                                    <tr>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Title</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Duration</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Volume</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Sets</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Exercises</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyTableBody" class="divide-y divide-zinc-800">
+                                    <!-- JS Populated -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: DIET -->
+                <div id="view-diet" class="hidden space-y-6">
+                    <!-- Today's Tracker -->
+                    <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                        <div class="flex justify-between items-center mb-8">
+                            <div>
+                                <h3 class="text-2xl font-black text-white italic uppercase">Today's Fuel</h3>
+                                <p class="text-sm text-zinc-500 mt-1" id="diet-date-display">Loading...</p>
+                            </div>
+                            <div class="text-right bg-black px-5 py-3 rounded-lg border border-zinc-800">
+                                <div class="text-3xl font-black text-lime-400 italic" id="diet-today-score">0/10</div>
+                                <div class="text-xs text-zinc-500 uppercase tracking-wider">Daily Score</div>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="diet-checklist">
+                            <!-- JS Populated -->
+                        </div>
+
+                        <div class="mt-8 pt-6 border-t border-zinc-800 flex justify-between items-center">
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-white mr-4 border border-zinc-700">
+                                    <i class="fa-solid fa-drumstick-bite text-lg"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-zinc-500 uppercase tracking-wider">Protein Intake</p>
+                                    <p class="font-black text-white text-xl italic"><span id="diet-today-protein">0</span>g</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-white mr-4 border border-zinc-700">
+                                    <i class="fa-solid fa-check text-lg"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-zinc-500 uppercase tracking-wider">Completion</p>
+                                    <p class="font-black text-white text-xl italic"><span id="diet-today-percent">0</span>%</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Diet Analytics -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 uppercase tracking-wider text-sm">Diet Score History</h3>
+                            <div class="h-64">
+                                <canvas id="dietScoreChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <h3 class="font-bold text-white mb-6 uppercase tracking-wider text-sm">Protein Intake History</h3>
+                            <div class="h-64">
+                                <canvas id="dietProteinChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weekly/Monthly Stats -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Scores -->
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <p class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Avg Score (Week)</p>
+                            <p class="text-3xl font-black text-white italic" id="diet-avg-week">-</p>
+                        </div>
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <p class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Avg Score (Month)</p>
+                            <p class="text-3xl font-black text-white italic" id="diet-avg-month">-</p>
+                        </div>
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <p class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Avg Score (All Time)</p>
+                            <p class="text-3xl font-black text-white italic" id="diet-avg-all">-</p>
+                        </div>
+                        
+                        <!-- Protein -->
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <p class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Avg Protein (Week)</p>
+                            <p class="text-3xl font-black text-lime-400 italic" id="diet-avg-protein-week">-</p>
+                        </div>
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <p class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Avg Protein (Month)</p>
+                            <p class="text-3xl font-black text-lime-400 italic" id="diet-avg-protein-month">-</p>
+                        </div>
+                        <div class="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+                            <p class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Avg Protein (All Time)</p>
+                            <p class="text-3xl font-black text-lime-400 italic" id="diet-avg-protein-all">-</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="modalOverlay" class="fixed inset-0 bg-black/90 hidden z-50 flex items-center justify-center p-4 transition-opacity duration-300">
+        <div class="bg-zinc-900 rounded-xl shadow-2xl border border-zinc-800 w-full max-w-4xl max-h-[90vh] flex flex-col transform transition-all scale-100">
+            <div class="px-6 py-5 border-b border-zinc-800 flex justify-between items-center bg-zinc-900 rounded-t-xl">
+                <h3 class="text-xl font-black text-white italic uppercase" id="modalTitle">Details</h3>
+                <button onclick="closeModal()" class="text-zinc-400 hover:text-white transition-colors">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar" id="modalContent">
+                <!-- Dynamic Content -->
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+    </style>
+
+    <script src="app.js"></script>
+</body>
+</html>
